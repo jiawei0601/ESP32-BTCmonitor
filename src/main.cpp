@@ -206,11 +206,13 @@ void handleTouch() {
 void setup() {
     Serial.begin(115200);
     pinMode(21, OUTPUT); digitalWrite(21, HIGH); 
-    tft.init(); tft.setRotation(3); tft.fillScreen(TFT_BLACK);
+    tft.init(); tft.setRotation(1); 
+    tft.invertDisplay(false); // 嘗試關閉反轉
+    tft.fillScreen(TFT_BLACK);
     
     touchSPI.begin(XPT2046_CLK, XPT2046_MISO, XPT2046_MOSI, XPT2046_CS);
     touch.begin(touchSPI);
-    touch.setRotation(3);
+    touch.setRotation(1);
     
     initButtons();
     connectWiFi();
