@@ -46,12 +46,13 @@ struct Button {
 Button buttons[5];
 
 void initButtons() {
-    int btnW = 55;
-    int btnH = 30;
-    int startX = 10;
-    int y = 205;
+    int btnW = 56;
+    int btnH = 28;
+    int startX = 8;
+    int y = 208;
+    int spacing = 6;
     for (int i = 0; i < 5; i++) {
-        buttons[i] = {startX + i * (btnW + 5), y, btnW, btnH, intervals[i]};
+        buttons[i] = {startX + i * (btnW + spacing), y, btnW, btnH, intervals[i]};
     }
 }
 
@@ -123,7 +124,7 @@ void drawKLines() {
     if (range == 0) range = 1;
     maxH += range * 0.1; minL -= range * 0.1; range = maxH - minL;
     tft.fillRect(0, 90, 320, 110, TFT_BLACK);
-    tft.drawRect(chartX - 5, chartY - chartHeight - 5, 305, chartHeight + 10, TFT_DARKGREY);
+    tft.drawRect(chartX - 5, chartY - chartHeight - 5, 280, chartHeight + 10, TFT_DARKGREY);
     for (int i = 0; i < 30; i++) {
         if (klines[i].close == 0) continue;
         int x = chartX + i * (barWidth + spacing);
