@@ -165,42 +165,42 @@ void drawUI(bool fullRedraw = true) {
     int h = tft.height();
     
     if (fullRedraw) {
+        // 全面清理緩衝區
         tft.fillScreen(TFT_BLACK);
         // Header
         tft.setTextColor(TFT_WHITE); tft.setTextDatum(TL_DATUM);
         tft.drawString("BTC/USDT (" + String(intervals[currentIntervalIdx]) + ")", 10, 10, 2);
         
-        // 分割線與邊框
         tft.drawFastHLine(0, 85, w, TFT_DARKGREY);
         drawButtons();
     }
 
-    // 價格區域局部更新
+    // 價格區域
     tft.fillRect(w/2 - 100, 30, 200, 50, TFT_BLACK);
     tft.setTextDatum(MC_DATUM); tft.setTextColor(TFT_YELLOW);
     char priceStr[20]; sprintf(priceStr, "$ %.1f", currentPrice);
     tft.drawString(priceStr, w/2, 55, 4); 
     
-    // K線圖區域局部更新
     drawKLines();
     
-    // 狀態局部更新
-    tft.fillRect(0, h-15, 150, 15, TFT_BLACK);
+    // 狀態
+    tft.fillRect(0, h-15, 120, 15, TFT_BLACK);
     tft.setTextDatum(BL_DATUM); tft.setTextColor(TFT_DARKGREY);
-    tft.drawString("Upd: " + String(millis()/1000) + "s", 10, h - 2, 1);
+    tft.drawString("Upd: " + String(millis()/1000) + "s", 5, h - 2, 1);
 }
 
 void handleTouch() {
     static unsigned long lastTouchTime = 0;
-    if (millis() - lastTouchTime < 200) return; // 簡單去彈跳
+    if (millis() - lastTouchTime < 300) return;
 
     if (touch.touched()) {
         TS_Point p = touch.getPoint();
         int screenW = tft.width();
         int screenH = tft.height();
         
+        // Rotation 1 觸控映射修正
         int tx = map(p.y, 250, 3850, 0, screenW); 
-        int ty = map(p.x, 350, 3750, 240, 0); 
+        int ty = map(p.x, 350, 3750, screenH, 0); 
         
         tx = constrain(tx, 0, screenW - 1);
         ty = constrain(ty, 0, screenH - 1);
@@ -212,14 +212,13 @@ void handleTouch() {
                     currentIntervalIdx = i;
                     lastTouchTime = millis();
                     
-                    // 立即視覺反饋
                     tft.fillRect(0, 0, screenW, 85, TFT_BLACK);
                     tft.setTextColor(TFT_WHITE); tft.setTextDatum(MC_DATUM);
-                    tft.drawString("Loading: " + String(intervals[i]), screenW/2, 45, 2);
-                    drawButtons(); // 更新按鈕高亮狀態
+                    tft.drawString("Loading...", screenW/2, 45, 2);
+                    drawButtons();
                     
                     fetchKLineData();
-                    drawUI(true); // 換週期需要全繪
+                    drawUI(true);
                 }
                 return;
             }
@@ -230,9 +229,10 @@ void handleTouch() {
 void setup() {
     Serial.begin(115200);
     pinMode(21, OUTPUT); digitalWrite(21, HIGH); 
-    tft.init(); tft.setRotation(1); 
-    tft.invertDisplay(false); // 嘗試關閉反轉
-    tft.fillScreen(TFT_BLACK);
+    tft.init(); 
+    // 解決殘影：先在縱向下清理
+    tft.setRotation(0); tft.fillScreen(TFT_BLACK);
+    tft.setRotation(1); tft.fillScreen(TFT_BLACK);
     
     touchSPI.begin(XPT2046_CLK, XPT2046_MISO, XPT2046_MOSI, XPT2046_CS);
     touch.begin(touchSPI);
@@ -241,7 +241,7 @@ void setup() {
     initButtons();
     connectWiFi();
     fetchKLineData();
-    drawUI();
+    drawUI(true);
 }
 
 void loop() {
