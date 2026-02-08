@@ -5,8 +5,8 @@
 #include <ArduinoJson.h>
 
 // --- WiFi 設定 ---
-const char* ssid = "YOUR_SSID";
-const char* password = "YOUR_PASSWORD";
+const char* ssid = "ASUS-501";
+const char* password = "dymj1r5i";
 
 // --- Binance API URL ---
 // 獲取最近 30 根 1小時 K線
