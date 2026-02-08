@@ -46,11 +46,13 @@ struct Button {
 Button buttons[5];
 
 void initButtons() {
-    int btnW = 56;
+    int screenW = tft.width();
+    int screenH = tft.height();
+    int btnW = (screenW - 40) / 5;
     int btnH = 28;
-    int startX = 10;
-    int y = 208;
-    int spacing = 6;
+    int spacing = 5;
+    int startX = (screenW - (btnW * 5 + spacing * 4)) / 2;
+    int y = screenH - 35;
     for (int i = 0; i < 5; i++) {
         buttons[i] = {startX + i * (btnW + spacing), y, btnW, btnH, intervals[i]};
     }
@@ -59,7 +61,8 @@ void initButtons() {
 void connectWiFi() {
     tft.fillScreen(TFT_BLACK);
     tft.setTextColor(TFT_WHITE);
-    tft.drawString("Connecting to WiFi...", 160, 100, 2);
+    tft.setTextDatum(MC_DATUM);
+    tft.drawString("WiFi Connecting...", tft.width()/2, tft.height()/2, 2);
     WiFi.begin(ssid, password);
     int counter = 0;
     while (WiFi.status() != WL_CONNECTED && counter < 60) {
@@ -69,11 +72,11 @@ void connectWiFi() {
     if (WiFi.status() == WL_CONNECTED) {
         tft.fillScreen(TFT_BLACK);
         tft.setTextColor(TFT_GREEN);
-        tft.drawString("WiFi Connected!", 160, 100, 2);
+        tft.drawString("Connected!", tft.width()/2, tft.height()/2, 2);
     } else {
         tft.fillScreen(TFT_BLACK);
         tft.setTextColor(TFT_RED);
-        tft.drawString("WiFi Failed!", 160, 100, 2);
+        tft.drawString("WiFi Failed!", tft.width()/2, tft.height()/2, 2);
     }
     delay(1000);
 }
@@ -105,11 +108,13 @@ void fetchKLineData() {
 }
 
 void drawKLines() {
+    int screenW = tft.width();
+    int screenH = tft.height();
     int chartX = 15;
-    int chartY = 195; 
+    int chartY = screenH - 45; 
     int chartHeight = 85; 
-    int barWidth = 7;
-    int spacing = 3;
+    int barWidth = (screenW - 60) / 30;
+    int spacing = 1;
     float maxH = -1, minL = 1000000;
     bool hasData = false;
     for (int i = 0; i < 30; i++) {
@@ -124,9 +129,9 @@ void drawKLines() {
     if (range == 0) range = 1;
     maxH += range * 0.1; minL -= range * 0.1; range = maxH - minL;
 
-    // 清除 K線區域並畫邊框 (適應 320 寬)
-    tft.fillRect(0, 90, 320, 115, TFT_BLACK);
-    tft.drawRect(chartX - 5, chartY - chartHeight - 5, 290, chartHeight + 10, TFT_DARKGREY);
+    // 清除 K線區域並畫邊框
+    tft.fillRect(0, 90, screenW, 115, TFT_BLACK);
+    tft.drawRect(chartX - 5, chartY - chartHeight - 5, screenW - 35, chartHeight + 10, TFT_DARKGREY);
     
     for (int i = 0; i < 30; i++) {
         if (klines[i].close == 0) continue;
@@ -141,8 +146,8 @@ void drawKLines() {
         tft.fillRect(x, min(yOpen, yClose), barWidth, bodyH, color);
     }
     tft.setTextDatum(MR_DATUM); tft.setTextColor(TFT_LIGHTGREY);
-    tft.drawFloat(maxH, 1, 315, chartY - chartHeight, 1);
-    tft.drawFloat(minL, 1, 315, chartY, 1);
+    tft.drawFloat(maxH, 1, screenW - 5, chartY - chartHeight, 1);
+    tft.drawFloat(minL, 1, screenW - 5, chartY, 1);
 }
 
 void drawButtons() {
@@ -161,19 +166,23 @@ void drawUI() {
     tft.drawString("BTC/USDT (" + String(intervals[currentIntervalIdx]) + ")", 10, 10, 2);
     tft.setTextDatum(MC_DATUM); tft.setTextColor(TFT_YELLOW);
     char priceStr[20]; sprintf(priceStr, "$ %.1f", currentPrice);
-    tft.drawString(priceStr, 160, 50, 4); 
+    tft.drawString(priceStr, tft.width()/2, 50, 4); 
     drawKLines();
     drawButtons();
     tft.setTextDatum(BL_DATUM); tft.setTextColor(TFT_DARKGREY);
-    tft.drawString("Updated: " + String(millis()/1000) + "s", 10, 238, 1);
+    tft.drawString("Updated: " + String(millis()/1000) + "s", 10, tft.height() - 10, 1);
 }
 
 void handleTouch() {
     if (touch.touched()) {
         TS_Point p = touch.getPoint();
-        // 橫向映射 (Rotation 1)
-        int tx = map(p.y, 250, 3850, 0, 320); 
-        int ty = map(p.x, 350, 3750, 240, 0);
+        int screenW = tft.width();
+        int screenH = tft.height();
+        
+        // 修正映射邏輯 (Rotation 3)
+        // 嘗試調整座標對應，如果 1 不行就改 3 的映射
+        int tx = map(p.y, 3850, 250, 0, screenW); 
+        int ty = map(p.x, 350, 3750, 0, screenH);
         
         Serial.printf("Raw: x=%d, y=%d | Mapped: x=%d, y=%d\n", p.x, p.y, tx, ty);
         
@@ -182,9 +191,9 @@ void handleTouch() {
                 ty >= buttons[i].y && ty <= buttons[i].y + buttons[i].h) {
                 if (currentIntervalIdx != i) {
                     currentIntervalIdx = i;
-                    tft.fillRect(0, 0, 320, 80, TFT_BLACK); 
+                    tft.fillRect(0, 0, screenW, 80, TFT_BLACK); 
                     tft.setTextColor(TFT_WHITE); tft.setTextDatum(MC_DATUM);
-                    tft.drawString("Loading...", 160, 40, 2);
+                    tft.drawString("Loading...", screenW/2, 40, 2);
                     fetchKLineData();
                     drawUI();
                     delay(500);
@@ -197,11 +206,11 @@ void handleTouch() {
 void setup() {
     Serial.begin(115200);
     pinMode(21, OUTPUT); digitalWrite(21, HIGH); 
-    tft.init(); tft.setRotation(1); tft.fillScreen(TFT_BLACK);
+    tft.init(); tft.setRotation(3); tft.fillScreen(TFT_BLACK);
     
     touchSPI.begin(XPT2046_CLK, XPT2046_MISO, XPT2046_MOSI, XPT2046_CS);
     touch.begin(touchSPI);
-    touch.setRotation(1);
+    touch.setRotation(3);
     
     initButtons();
     connectWiFi();
