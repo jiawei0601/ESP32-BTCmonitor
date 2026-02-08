@@ -111,9 +111,9 @@ void drawKLines() {
     int screenW = tft.width();
     int screenH = tft.height();
     int chartX = 15;
-    int chartY = screenH - 45; 
+    int chartY = screenH - 50; 
     int chartHeight = 85; 
-    int barWidth = (screenW - 60) / 30;
+    int barWidth = (screenW - 50) / 30;
     int spacing = 1;
     float maxH = -1, minL = 1000000;
     bool hasData = false;
@@ -129,9 +129,9 @@ void drawKLines() {
     if (range == 0) range = 1;
     maxH += range * 0.1; minL -= range * 0.1; range = maxH - minL;
 
-    // 清除 K線區域並畫邊框
-    tft.fillRect(0, 90, screenW, 115, TFT_BLACK);
-    tft.drawRect(chartX - 5, chartY - chartHeight - 5, screenW - 35, chartHeight + 10, TFT_DARKGREY);
+    // 清除 K線區域
+    tft.fillRect(0, 90, screenW, 120, TFT_BLACK);
+    tft.drawRect(chartX - 5, chartY - chartHeight - 5, screenW - 40, chartHeight + 10, TFT_DARKGREY);
     
     for (int i = 0; i < 30; i++) {
         if (klines[i].close == 0) continue;
@@ -160,44 +160,68 @@ void drawButtons() {
     }
 }
 
-void drawUI() {
-    tft.fillScreen(TFT_BLACK);
-    tft.setTextColor(TFT_WHITE); tft.setTextDatum(TL_DATUM);
-    tft.drawString("BTC/USDT (" + String(intervals[currentIntervalIdx]) + ")", 10, 10, 2);
+void drawUI(bool fullRedraw = true) {
+    int w = tft.width();
+    int h = tft.height();
+    
+    if (fullRedraw) {
+        tft.fillScreen(TFT_BLACK);
+        // Header
+        tft.setTextColor(TFT_WHITE); tft.setTextDatum(TL_DATUM);
+        tft.drawString("BTC/USDT (" + String(intervals[currentIntervalIdx]) + ")", 10, 10, 2);
+        
+        // 分割線與邊框
+        tft.drawFastHLine(0, 85, w, TFT_DARKGREY);
+        drawButtons();
+    }
+
+    // 價格區域局部更新
+    tft.fillRect(w/2 - 100, 30, 200, 50, TFT_BLACK);
     tft.setTextDatum(MC_DATUM); tft.setTextColor(TFT_YELLOW);
     char priceStr[20]; sprintf(priceStr, "$ %.1f", currentPrice);
-    tft.drawString(priceStr, tft.width()/2, 50, 4); 
+    tft.drawString(priceStr, w/2, 55, 4); 
+    
+    // K線圖區域局部更新
     drawKLines();
-    drawButtons();
+    
+    // 狀態局部更新
+    tft.fillRect(0, h-15, 150, 15, TFT_BLACK);
     tft.setTextDatum(BL_DATUM); tft.setTextColor(TFT_DARKGREY);
-    tft.drawString("Updated: " + String(millis()/1000) + "s", 10, tft.height() - 10, 1);
+    tft.drawString("Upd: " + String(millis()/1000) + "s", 10, h - 2, 1);
 }
 
 void handleTouch() {
+    static unsigned long lastTouchTime = 0;
+    if (millis() - lastTouchTime < 200) return; // 簡單去彈跳
+
     if (touch.touched()) {
         TS_Point p = touch.getPoint();
         int screenW = tft.width();
         int screenH = tft.height();
         
-        // 修正映射邏輯 (Rotation 3)
-        // 嘗試調整座標對應，如果 1 不行就改 3 的映射
-        int tx = map(p.y, 3850, 250, 0, screenW); 
-        int ty = map(p.x, 350, 3750, 0, screenH);
+        int tx = map(p.y, 250, 3850, 0, screenW); 
+        int ty = map(p.x, 350, 3750, 240, 0); 
         
-        Serial.printf("Raw: x=%d, y=%d | Mapped: x=%d, y=%d\n", p.x, p.y, tx, ty);
+        tx = constrain(tx, 0, screenW - 1);
+        ty = constrain(ty, 0, screenH - 1);
         
         for (int i = 0; i < 5; i++) {
             if (tx >= buttons[i].x && tx <= buttons[i].x + buttons[i].w &&
                 ty >= buttons[i].y && ty <= buttons[i].y + buttons[i].h) {
                 if (currentIntervalIdx != i) {
                     currentIntervalIdx = i;
-                    tft.fillRect(0, 0, screenW, 80, TFT_BLACK); 
+                    lastTouchTime = millis();
+                    
+                    // 立即視覺反饋
+                    tft.fillRect(0, 0, screenW, 85, TFT_BLACK);
                     tft.setTextColor(TFT_WHITE); tft.setTextDatum(MC_DATUM);
-                    tft.drawString("Loading...", screenW/2, 40, 2);
+                    tft.drawString("Loading: " + String(intervals[i]), screenW/2, 45, 2);
+                    drawButtons(); // 更新按鈕高亮狀態
+                    
                     fetchKLineData();
-                    drawUI();
-                    delay(500);
+                    drawUI(true); // 換週期需要全繪
                 }
+                return;
             }
         }
     }
